@@ -1,0 +1,7 @@
+{
+  "startingBalance": 500,
+  "currentBalance": 500,
+  "wins": 0,
+  "losses": 0,
+  "trades": []
+}

@@ -8,20 +8,27 @@ console.log("----------------------------------");
 const fakePortfolio = {
   startingBalance: 500,
   currentBalance: 500,
-  openTrade: null,
   wins: 0,
   losses: 0,
   trades: []
 };
 
-const fakePrices = {
-  "BTC-USD": 105000,
-  "ETH-USD": 3500,
-  "SOL-USD": 150
-};
+async function getCoinbasePrice(symbol) {
+  const url = `https://api.coinbase.com/v2/prices/${symbol}/spot`;
 
-function getRandomMove() {
-  return (Math.random() * 4 - 2) / 100;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch price for ${symbol}`);
+  }
+
+  const data = await response.json();
+  return Number(data.data.amount);
+}
+
+function getRandomOldPrice(currentPrice) {
+  const fakePreviousMove = (Math.random() * 2 - 1) / 100;
+  return currentPrice / (1 + fakePreviousMove);
 }
 
 function calculateScore(symbol, oldPrice, newPrice) {
@@ -29,9 +36,12 @@ function calculateScore(symbol, oldPrice, newPrice) {
 
   let score = 50;
 
-  if (changePercent > 0.3) score += 20;
-  if (changePercent > 0.8) score += 20;
-  if (changePercent < -0.5) score -= 20;
+  if (changePercent > 0.2) score += 10;
+  if (changePercent > 0.5) score += 15;
+  if (changePercent > 1.0) score += 25;
+
+  if (changePercent < -0.3) score -= 10;
+  if (changePercent < -0.7) score -= 20;
 
   return {
     symbol,
@@ -42,22 +52,30 @@ function calculateScore(symbol, oldPrice, newPrice) {
   };
 }
 
-function runBotOnce() {
-  console.log("📡 Checking BTC, ETH, and SOL...");
+async function runBotOnce() {
+  console.log("📡 Pulling live Coinbase prices...");
 
   const results = [];
 
   for (const symbol of config.COINS) {
-    const oldPrice = fakePrices[symbol];
-    const move = getRandomMove();
-    const newPrice = oldPrice * (1 + move);
+    try {
+      const currentPrice = await getCoinbasePrice(symbol);
+      const oldPrice = getRandomOldPrice(currentPrice);
 
-    const result = calculateScore(symbol, oldPrice, newPrice);
-    results.push(result);
+      const result = calculateScore(symbol, oldPrice, currentPrice);
+      results.push(result);
 
-    console.log(
-      `${symbol}: $${newPrice.toFixed(2)} | Change: ${result.changePercent.toFixed(2)}% | Score: ${result.score}`
-    );
+      console.log(
+        `${symbol}: $${currentPrice.toFixed(2)} | Change Estimate: ${result.changePercent.toFixed(2)}% | Score: ${result.score}`
+      );
+    } catch (error) {
+      console.log(`❌ Error fetching ${symbol}:`, error.message);
+    }
+  }
+
+  if (results.length === 0) {
+    console.log("No price data received. Exiting safely.");
+    return;
   }
 
   results.sort((a, b) => b.score - a.score);
@@ -77,6 +95,7 @@ function runBotOnce() {
     const trade = {
       symbol: bestSetup.symbol,
       tradeSize: tradeSize.toFixed(2),
+      entryPrice: bestSetup.newPrice.toFixed(2),
       profitLoss: profitLoss.toFixed(2),
       result: profitLoss > 0 ? "WIN" : "LOSS"
     };

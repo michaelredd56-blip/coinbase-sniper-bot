@@ -2,8 +2,11 @@ name: Coinbase Sniper Bot
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   run-bot:
@@ -23,3 +26,11 @@ jobs:
 
       - name: Run Bot
         run: node index.js
+
+      - name: Save Updated Portfolio
+        run: |
+          git config user.name "coinbase-sniper-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add portfolio.json
+          git commit -m "Update paper trading portfolio" || echo "No portfolio changes to commit"
+          git push

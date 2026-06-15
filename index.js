@@ -1,21 +1,33 @@
+const fs = require("fs");
 const config = require("./config");
+
+const PORTFOLIO_FILE = "./portfolio.json";
 
 console.log("🚀 Coinbase Sniper Bot Started");
 console.log("Mode:", config.BOT_MODE);
 console.log("Real Trading Enabled:", config.REAL_TRADING_ENABLED);
 console.log("----------------------------------");
 
-const fakePortfolio = {
-  startingBalance: 500,
-  currentBalance: 500,
-  wins: 0,
-  losses: 0,
-  trades: []
-};
+function loadPortfolio() {
+  if (!fs.existsSync(PORTFOLIO_FILE)) {
+    return {
+      startingBalance: 500,
+      currentBalance: 500,
+      wins: 0,
+      losses: 0,
+      trades: []
+    };
+  }
+
+  return JSON.parse(fs.readFileSync(PORTFOLIO_FILE, "utf8"));
+}
+
+function savePortfolio(portfolio) {
+  fs.writeFileSync(PORTFOLIO_FILE, JSON.stringify(portfolio, null, 2));
+}
 
 async function getCoinbasePrice(symbol) {
   const url = `https://api.coinbase.com/v2/prices/${symbol}/spot`;
-
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -33,26 +45,25 @@ function getRandomOldPrice(currentPrice) {
 
 function calculateScore(symbol, oldPrice, newPrice) {
   const changePercent = ((newPrice - oldPrice) / oldPrice) * 100;
-
   let score = 50;
 
   if (changePercent > 0.2) score += 10;
   if (changePercent > 0.5) score += 15;
   if (changePercent > 1.0) score += 25;
-
   if (changePercent < -0.3) score -= 10;
   if (changePercent < -0.7) score -= 20;
 
-  return {
-    symbol,
-    oldPrice,
-    newPrice,
-    changePercent,
-    score
-  };
+  return { symbol, oldPrice, newPrice, changePercent, score };
 }
 
 async function runBotOnce() {
+  const portfolio = loadPortfolio();
+
+  console.log("📂 Loaded Portfolio");
+  console.log("Starting Balance: $" + portfolio.startingBalance.toFixed(2));
+  console.log("Current Balance: $" + portfolio.currentBalance.toFixed(2));
+  console.log("----------------------------------");
+
   console.log("📡 Pulling live Coinbase prices...");
 
   const results = [];
@@ -61,7 +72,6 @@ async function runBotOnce() {
     try {
       const currentPrice = await getCoinbasePrice(symbol);
       const oldPrice = getRandomOldPrice(currentPrice);
-
       const result = calculateScore(symbol, oldPrice, currentPrice);
       results.push(result);
 
@@ -86,26 +96,27 @@ async function runBotOnce() {
   console.log("Score:", bestSetup.score);
 
   if (bestSetup.score >= 80) {
-    const tradeSize = fakePortfolio.currentBalance * config.MAX_TRADE_PERCENT;
+    const tradeSize = portfolio.currentBalance * config.MAX_TRADE_PERCENT;
     const profitPercent = Math.random() > 0.45 ? 0.015 : -0.0075;
     const profitLoss = tradeSize * profitPercent;
 
-    fakePortfolio.currentBalance += profitLoss;
+    portfolio.currentBalance += profitLoss;
 
     const trade = {
+      date: new Date().toISOString(),
       symbol: bestSetup.symbol,
-      tradeSize: tradeSize.toFixed(2),
-      entryPrice: bestSetup.newPrice.toFixed(2),
-      profitLoss: profitLoss.toFixed(2),
+      tradeSize: Number(tradeSize.toFixed(2)),
+      entryPrice: Number(bestSetup.newPrice.toFixed(2)),
+      profitLoss: Number(profitLoss.toFixed(2)),
       result: profitLoss > 0 ? "WIN" : "LOSS"
     };
 
-    fakePortfolio.trades.push(trade);
+    portfolio.trades.push(trade);
 
     if (profitLoss > 0) {
-      fakePortfolio.wins++;
+      portfolio.wins++;
     } else {
-      fakePortfolio.losses++;
+      portfolio.losses++;
     }
 
     console.log("📈 PAPER TRADE EXECUTED");
@@ -114,20 +125,23 @@ async function runBotOnce() {
     console.log("🛑 No trade. Setup was not strong enough.");
   }
 
-  const totalTrades = fakePortfolio.wins + fakePortfolio.losses;
+  savePortfolio(portfolio);
+
+  const totalTrades = portfolio.wins + portfolio.losses;
   const winRate =
-    totalTrades > 0 ? (fakePortfolio.wins / totalTrades) * 100 : 0;
+    totalTrades > 0 ? (portfolio.wins / totalTrades) * 100 : 0;
 
   console.log("----------------------------------");
   console.log("📊 PAPER TRADING REPORT");
-  console.log("Starting Balance: $" + fakePortfolio.startingBalance.toFixed(2));
-  console.log("Current Balance: $" + fakePortfolio.currentBalance.toFixed(2));
+  console.log("Starting Balance: $" + portfolio.startingBalance.toFixed(2));
+  console.log("Current Balance: $" + portfolio.currentBalance.toFixed(2));
   console.log(
     "Profit/Loss: $" +
-      (fakePortfolio.currentBalance - fakePortfolio.startingBalance).toFixed(2)
+      (portfolio.currentBalance - portfolio.startingBalance).toFixed(2)
   );
-  console.log("Wins:", fakePortfolio.wins);
-  console.log("Losses:", fakePortfolio.losses);
+  console.log("Total Trades:", totalTrades);
+  console.log("Wins:", portfolio.wins);
+  console.log("Losses:", portfolio.losses);
   console.log("Win Rate:", winRate.toFixed(2) + "%");
   console.log("----------------------------------");
   console.log("✅ Bot run complete. Exiting safely.");

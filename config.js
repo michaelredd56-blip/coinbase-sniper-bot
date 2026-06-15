@@ -1,0 +1,18 @@
+module.exports = {
+  BOT_MODE: "paper",
+
+  MIN_ACCOUNT_BALANCE: 10,
+  MAX_ACCOUNT_BALANCE: 1000,
+
+  MAX_TRADE_PERCENT: 0.05,
+
+  MAX_DAILY_LOSS_PERCENT: 0.03,
+
+  COINS: [
+    "BTC-USD",
+    "ETH-USD",
+    "SOL-USD"
+  ],
+
+  REAL_TRADING_ENABLED: false
+};

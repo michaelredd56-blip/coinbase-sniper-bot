@@ -2,7 +2,7 @@ const fs = require("fs");
 const config = require("./config");
 
 const PORTFOLIO_FILE = "./portfolio.json";
-const CHECK_INTERVAL_SECONDS = 15;
+const CHECK_INTERVAL_SECONDS = 5;
 
 console.log("🚀 Coinbase Sniper Bot Started");
 console.log("Mode:", config.BOT_MODE);

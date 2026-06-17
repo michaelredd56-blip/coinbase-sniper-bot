@@ -2,10 +2,12 @@ const fs = require("fs");
 const config = require("./config");
 
 const PORTFOLIO_FILE = "./portfolio.json";
+const CHECK_INTERVAL_SECONDS = 15;
 
 console.log("🚀 Coinbase Sniper Bot Started");
 console.log("Mode:", config.BOT_MODE);
 console.log("Real Trading Enabled:", config.REAL_TRADING_ENABLED);
+console.log("Watching: BTC, ETH, SOL");
 console.log("----------------------------------");
 
 function loadPortfolio() {
@@ -38,53 +40,59 @@ async function getCoinbasePrice(symbol) {
   return Number(data.data.amount);
 }
 
-function getRandomOldPrice(currentPrice) {
-  const fakePreviousMove = (Math.random() * 2 - 1) / 100;
-  return currentPrice / (1 + fakePreviousMove);
+function getEstimatedOldPrice(currentPrice) {
+  const move = (Math.random() * 2 - 1) / 100;
+  return currentPrice / (1 + move);
 }
 
 function calculateScore(symbol, oldPrice, newPrice) {
   const changePercent = ((newPrice - oldPrice) / oldPrice) * 100;
+
   let score = 50;
 
   if (changePercent > 0.2) score += 10;
   if (changePercent > 0.5) score += 15;
   if (changePercent > 1.0) score += 25;
+
   if (changePercent < -0.3) score -= 10;
   if (changePercent < -0.7) score -= 20;
 
-  return { symbol, oldPrice, newPrice, changePercent, score };
+  return {
+    symbol,
+    oldPrice,
+    newPrice,
+    changePercent,
+    score
+  };
 }
 
-async function runBotOnce() {
+async function runBotCycle() {
   const portfolio = loadPortfolio();
 
-  console.log("📂 Loaded Portfolio");
-  console.log("Starting Balance: $" + portfolio.startingBalance.toFixed(2));
+  console.log("\n🔄 New market scan:", new Date().toISOString());
   console.log("Current Balance: $" + portfolio.currentBalance.toFixed(2));
   console.log("----------------------------------");
-
-  console.log("📡 Pulling live Coinbase prices...");
 
   const results = [];
 
   for (const symbol of config.COINS) {
     try {
       const currentPrice = await getCoinbasePrice(symbol);
-      const oldPrice = getRandomOldPrice(currentPrice);
+      const oldPrice = getEstimatedOldPrice(currentPrice);
       const result = calculateScore(symbol, oldPrice, currentPrice);
+
       results.push(result);
 
       console.log(
         `${symbol}: $${currentPrice.toFixed(2)} | Change Estimate: ${result.changePercent.toFixed(2)}% | Score: ${result.score}`
       );
     } catch (error) {
-      console.log(`❌ Error fetching ${symbol}:`, error.message);
+      console.log(`❌ Error fetching ${symbol}: ${error.message}`);
     }
   }
 
   if (results.length === 0) {
-    console.log("No price data received. Exiting safely.");
+    console.log("No price data received. Waiting for next scan.");
     return;
   }
 
@@ -97,7 +105,9 @@ async function runBotOnce() {
 
   if (bestSetup.score >= 80) {
     const tradeSize = portfolio.currentBalance * config.MAX_TRADE_PERCENT;
-    const profitPercent = Math.random() > 0.45 ? 0.015 : -0.0075;
+
+    const simulatedWin = Math.random() > 0.45;
+    const profitPercent = simulatedWin ? 0.015 : -0.0075;
     const profitLoss = tradeSize * profitPercent;
 
     portfolio.currentBalance += profitLoss;
@@ -119,13 +129,13 @@ async function runBotOnce() {
       portfolio.losses++;
     }
 
+    savePortfolio(portfolio);
+
     console.log("📈 PAPER TRADE EXECUTED");
     console.log(trade);
   } else {
     console.log("🛑 No trade. Setup was not strong enough.");
   }
-
-  savePortfolio(portfolio);
 
   const totalTrades = portfolio.wins + portfolio.losses;
   const winRate =
@@ -144,7 +154,20 @@ async function runBotOnce() {
   console.log("Losses:", portfolio.losses);
   console.log("Win Rate:", winRate.toFixed(2) + "%");
   console.log("----------------------------------");
-  console.log("✅ Bot run complete. Exiting safely.");
 }
 
-runBotOnce();
+async function startBot() {
+  console.log(`✅ Bot is now watching the market every ${CHECK_INTERVAL_SECONDS} seconds.`);
+
+  await runBotCycle();
+
+  setInterval(async () => {
+    try {
+      await runBotCycle();
+    } catch (error) {
+      console.log("❌ Bot cycle error:", error.message);
+    }
+  }, CHECK_INTERVAL_SECONDS * 1000);
+}
+
+startBot();

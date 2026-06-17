@@ -103,7 +103,7 @@ async function runBotCycle() {
   console.log("Best setup:", bestSetup.symbol);
   console.log("Score:", bestSetup.score);
 
-  if (bestSetup.score >= 80) {
+  if (bestSetup.score >= 75) {
     const tradeSize = portfolio.currentBalance * config.MAX_TRADE_PERCENT;
 
     const simulatedWin = Math.random() > 0.45;

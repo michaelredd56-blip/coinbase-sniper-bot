@@ -4,7 +4,7 @@ const config = require("./config");
 const PORTFOLIO_FILE = "./portfolio.json";
 
 const CHECK_INTERVAL_SECONDS = 5;
-const TRADE_SCORE_THRESHOLD = 60;
+const TRADE_SCORE_THRESHOLD = 50;
 const TAKE_PROFIT_PERCENT = 0.0125;
 const STOP_LOSS_PERCENT = 0.0075;
 const MAX_OPEN_POSITIONS = 5;

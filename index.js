@@ -3,11 +3,6 @@ const config = require("./config");
 
 const PORTFOLIO_FILE = "./portfolio.json";
 
-const fs = require("fs");
-const config = require("./config");
-
-const PORTFOLIO_FILE = "./portfolio.json";
-
 const CHECK_INTERVAL_SECONDS = 5;
 const TRADE_SCORE_THRESHOLD = 60;
 const TAKE_PROFIT_PERCENT = 0.0025; // +0.25%

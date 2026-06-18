@@ -270,18 +270,22 @@ async function scanForTrades(portfolio) {
     }
   }
 
-  setups.sort((a, b) => b.score - a.score);
+setups.sort((a, b) => b.score - a.score);
 
-  for (const setup of setups) {
-    if (portfolio.openPositions.length >= MAX_OPEN_POSITIONS) break;
-    if (hasOpenPosition(portfolio, setup.symbol)) continue;
+for (const setup of setups) {
+  if (portfolio.openPositions.length >= MAX_OPEN_POSITIONS) break;
+  if (hasOpenPosition(portfolio, setup.symbol)) continue;
+  if (!setup.currentPrice) continue;
 
-    if (
-    setup.score >= TRADE_SCORE_THRESHOLD &&
-    setup.currentPrice
-) {
+  if (setup.score >= 70) {
+    console.log(`🚀 HIGH CONFIDENCE TRADE: ${setup.symbol} | Score: ${setup.score}`);
     openPaperTrade(portfolio, setup);
-}
+    continue;
+  }
+
+  if (setup.score >= TRADE_SCORE_THRESHOLD) {
+    console.log(`✅ TRADE EXECUTED: ${setup.symbol} | Score: ${setup.score}`);
+    openPaperTrade(portfolio, setup);
   }
 }
 

@@ -8,7 +8,7 @@ const TRADE_SCORE_THRESHOLD = 60;
 const TAKE_PROFIT_PERCENT = 0.0025; // +0.25%
 const STOP_LOSS_PERCENT = 0.0015;   // -0.15%
 const MAX_OPEN_POSITIONS = 3;
-const MAX_POSITION_MINUTES = 5;
+const MAX_POSITION_MINUTES = 2;
 const priceHistory = {};
 
 console.log("🚀 AI-Style Coinbase Sniper Bot Started");

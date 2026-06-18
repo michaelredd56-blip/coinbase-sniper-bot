@@ -277,9 +277,12 @@ async function scanForTrades(portfolio) {
     if (portfolio.openPositions.length >= MAX_OPEN_POSITIONS) break;
     if (hasOpenPosition(portfolio, setup.symbol)) continue;
 
-    if (setup.score >= TRADE_SCORE_THRESHOLD) {
-      openPaperTrade(portfolio, setup);
-    }
+    if (
+    setup.score >= TRADE_SCORE_THRESHOLD &&
+    setup.currentPrice
+) {
+    openPaperTrade(portfolio, setup);
+}
   }
 }
 

@@ -288,6 +288,7 @@ for (const setup of setups) {
     openPaperTrade(portfolio, setup);
   }
 }
+}
 
 function printReport(portfolio) {
   const totalTrades = portfolio.wins + portfolio.losses;

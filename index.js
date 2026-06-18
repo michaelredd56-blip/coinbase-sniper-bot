@@ -4,18 +4,16 @@ const config = require("./config");
 const PORTFOLIO_FILE = "./portfolio.json";
 const CHECK_INTERVAL_SECONDS = 5;
 
-// Trade rules
 const TRADE_SCORE_THRESHOLD = 75;
-const TAKE_PROFIT_PERCENT = 0.015; // +1.5%
-const STOP_LOSS_PERCENT = 0.0075;  // -0.75%
+const TAKE_PROFIT_PERCENT = 0.015;
+const STOP_LOSS_PERCENT = 0.0075;
+const MAX_OPEN_POSITIONS = 3;
 
 console.log("🚀 Coinbase Sniper Bot Started");
 console.log("Mode:", config.BOT_MODE);
 console.log("Real Trading Enabled:", config.REAL_TRADING_ENABLED);
 console.log("Watching: BTC, ETH, SOL");
-console.log("Trade Threshold:", TRADE_SCORE_THRESHOLD);
-console.log("Take Profit:", TAKE_PROFIT_PERCENT * 100 + "%");
-console.log("Stop Loss:", STOP_LOSS_PERCENT * 100 + "%");
+console.log("Max Open Positions:", MAX_OPEN_POSITIONS);
 console.log("----------------------------------");
 
 function loadPortfolio() {
@@ -26,14 +24,14 @@ function loadPortfolio() {
       wins: 0,
       losses: 0,
       trades: [],
-      openPosition: null
+      openPositions: []
     };
   }
 
   const portfolio = JSON.parse(fs.readFileSync(PORTFOLIO_FILE, "utf8"));
 
   if (!portfolio.trades) portfolio.trades = [];
-  if (!("openPosition" in portfolio)) portfolio.openPosition = null;
+  if (!portfolio.openPositions) portfolio.openPositions = [];
 
   return portfolio;
 }
@@ -71,19 +69,27 @@ function calculateScore(symbol, oldPrice, newPrice) {
   if (changePercent < -0.3) score -= 10;
   if (changePercent < -0.7) score -= 20;
 
-  return {
-    symbol,
-    oldPrice,
-    newPrice,
-    changePercent,
-    score
-  };
+  return { symbol, oldPrice, newPrice, changePercent, score };
+}
+
+function hasOpenPosition(portfolio, symbol) {
+  return portfolio.openPositions.some(pos => pos.symbol === symbol);
 }
 
 function openPaperTrade(portfolio, setup) {
+  if (portfolio.openPositions.length >= MAX_OPEN_POSITIONS) {
+    console.log("🛑 Max open positions reached.");
+    return;
+  }
+
+  if (hasOpenPosition(portfolio, setup.symbol)) {
+    console.log(`🛑 Already have open position for ${setup.symbol}.`);
+    return;
+  }
+
   const tradeSize = portfolio.currentBalance * config.MAX_TRADE_PERCENT;
 
-  portfolio.openPosition = {
+  const position = {
     dateOpened: new Date().toISOString(),
     symbol: setup.symbol,
     tradeSize: Number(tradeSize.toFixed(2)),
@@ -93,89 +99,102 @@ function openPaperTrade(portfolio, setup) {
     scoreAtEntry: setup.score
   };
 
+  portfolio.openPositions.push(position);
   savePortfolio(portfolio);
 
   console.log("📌 PAPER POSITION OPENED");
-  console.log(portfolio.openPosition);
+  console.log(position);
 }
 
-async function checkOpenPosition(portfolio) {
-  const position = portfolio.openPosition;
+async function checkOpenPositions(portfolio) {
+  if (portfolio.openPositions.length === 0) return;
 
-  if (!position) return false;
+  const stillOpen = [];
 
-  const currentPrice = await getCoinbasePrice(position.symbol);
-  const priceChangePercent =
-    ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
+  for (const position of portfolio.openPositions) {
+    const currentPrice = await getCoinbasePrice(position.symbol);
+    const priceChangePercent =
+      ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
 
-  console.log("📍 Monitoring open position");
-  console.log("Symbol:", position.symbol);
-  console.log("Entry Price:", "$" + position.entryPrice);
-  console.log("Current Price:", "$" + currentPrice.toFixed(2));
-  console.log("Take Profit:", "$" + position.takeProfitPrice);
-  console.log("Stop Loss:", "$" + position.stopLossPrice);
-  console.log("Move:", priceChangePercent.toFixed(2) + "%");
+    console.log("----------------------------------");
+    console.log("📍 Monitoring open position");
+    console.log("Symbol:", position.symbol);
+    console.log("Entry Price:", "$" + position.entryPrice);
+    console.log("Current Price:", "$" + currentPrice.toFixed(2));
+    console.log("Take Profit:", "$" + position.takeProfitPrice);
+    console.log("Stop Loss:", "$" + position.stopLossPrice);
+    console.log("Move:", priceChangePercent.toFixed(2) + "%");
 
-  let shouldClose = false;
-  let result = null;
+    let shouldClose = false;
+    let result = null;
 
-  if (currentPrice >= position.takeProfitPrice) {
-    shouldClose = true;
-    result = "WIN";
+    if (currentPrice >= position.takeProfitPrice) {
+      shouldClose = true;
+      result = "WIN";
+    }
+
+    if (currentPrice <= position.stopLossPrice) {
+      shouldClose = true;
+      result = "LOSS";
+    }
+
+    if (!shouldClose) {
+      console.log("⏳ Position still open.");
+      stillOpen.push(position);
+      continue;
+    }
+
+    const exitPrice = currentPrice;
+    const profitPercent = (exitPrice - position.entryPrice) / position.entryPrice;
+    const profitLoss = position.tradeSize * profitPercent;
+
+    portfolio.currentBalance += profitLoss;
+
+    const closedTrade = {
+      dateOpened: position.dateOpened,
+      dateClosed: new Date().toISOString(),
+      symbol: position.symbol,
+      tradeSize: position.tradeSize,
+      entryPrice: position.entryPrice,
+      exitPrice: Number(exitPrice.toFixed(2)),
+      profitLoss: Number(profitLoss.toFixed(2)),
+      result
+    };
+
+    portfolio.trades.push(closedTrade);
+
+    if (profitLoss > 0) {
+      portfolio.wins++;
+      console.log("✅ TAKE PROFIT HIT");
+    } else {
+      portfolio.losses++;
+      console.log("🛑 STOP LOSS HIT");
+    }
+
+    console.log("📈 PAPER TRADE CLOSED");
+    console.log(closedTrade);
   }
 
-  if (currentPrice <= position.stopLossPrice) {
-    shouldClose = true;
-    result = "LOSS";
-  }
-
-  if (!shouldClose) {
-    console.log("⏳ Position still open.");
-    return true;
-  }
-
-  const exitPrice = currentPrice;
-  const profitPercent = (exitPrice - position.entryPrice) / position.entryPrice;
-  const profitLoss = position.tradeSize * profitPercent;
-
-  portfolio.currentBalance += profitLoss;
-
-  const closedTrade = {
-    dateOpened: position.dateOpened,
-    dateClosed: new Date().toISOString(),
-    symbol: position.symbol,
-    tradeSize: position.tradeSize,
-    entryPrice: position.entryPrice,
-    exitPrice: Number(exitPrice.toFixed(2)),
-    profitLoss: Number(profitLoss.toFixed(2)),
-    result
-  };
-
-  portfolio.trades.push(closedTrade);
-
-  if (profitLoss > 0) {
-    portfolio.wins++;
-  } else {
-    portfolio.losses++;
-  }
-
-  portfolio.openPosition = null;
-
+  portfolio.openPositions = stillOpen;
   savePortfolio(portfolio);
-
-  console.log(result === "WIN" ? "✅ TAKE PROFIT HIT" : "🛑 STOP LOSS HIT");
-  console.log("📈 PAPER TRADE CLOSED");
-  console.log(closedTrade);
-
-  return false;
 }
 
-async function scanForNewTrade(portfolio) {
+async function scanForNewTrades(portfolio) {
+  if (portfolio.openPositions.length >= MAX_OPEN_POSITIONS) {
+    console.log("🛑 Max open positions already active. No new trades.");
+    return;
+  }
+
   const results = [];
 
   console.log("📡 Scanning BTC, ETH, and SOL...");
 
   for (const symbol of config.COINS) {
+    if (hasOpenPosition(portfolio, symbol)) {
+      console.log(`⏭️ Skipping ${symbol}, already open.`);
+      continue;
+    }
+
     try {
       const currentPrice = await getCoinbasePrice(symbol);
       const oldPrice = getEstimatedOldPrice(currentPrice);
@@ -192,28 +211,26 @@ async function scanForNewTrade(portfolio) {
   }
 
   if (results.length === 0) {
-    console.log("No price data received.");
+    console.log("No new trade candidates.");
     return;
   }
 
   results.sort((a, b) => b.score - a.score);
-  const bestSetup = results[0];
 
-  console.log("----------------------------------");
-  console.log("Best setup:", bestSetup.symbol);
-  console.log("Score:", bestSetup.score);
+  for (const setup of results) {
+    if (portfolio.openPositions.length >= MAX_OPEN_POSITIONS) break;
 
-  if (bestSetup.score >= TRADE_SCORE_THRESHOLD) {
-    openPaperTrade(portfolio, bestSetup);
-  } else {
-    console.log("🛑 No trade. Setup was not strong enough.");
+    if (setup.score >= TRADE_SCORE_THRESHOLD) {
+      openPaperTrade(portfolio, setup);
+    } else {
+      console.log(`🛑 ${setup.symbol} score ${setup.score} not strong enough.`);
+    }
   }
 }
 
 function printReport(portfolio) {
   const totalTrades = portfolio.wins + portfolio.losses;
-  const winRate =
-    totalTrades > 0 ? (portfolio.wins / totalTrades) * 100 : 0;
+  const winRate = totalTrades > 0 ? (portfolio.wins / totalTrades) * 100 : 0;
 
   console.log("----------------------------------");
   console.log("📊 PAPER TRADING REPORT");
@@ -227,34 +244,36 @@ function printReport(portfolio) {
   console.log("Wins:", portfolio.wins);
   console.log("Losses:", portfolio.losses);
   console.log("Win Rate:", winRate.toFixed(2) + "%");
+  console.log("Open Positions:", portfolio.openPositions.length);
 
-  if (portfolio.openPosition) {
-    console.log("Open Position:", portfolio.openPosition.symbol);
-  } else {
-    console.log("Open Position: None");
+  if (portfolio.openPositions.length > 0) {
+    for (const pos of portfolio.openPositions) {
+      console.log(`- ${pos.symbol} | Entry: $${pos.entryPrice}`);
+    }
   }
 
   console.log("----------------------------------");
 }
 
 async function runBotCycle() {
-  const portfolio = loadPortfolio();
+  let portfolio = loadPortfolio();
 
   console.log("\n🔄 New market scan:", new Date().toISOString());
   console.log("Current Balance: $" + portfolio.currentBalance.toFixed(2));
+  console.log("Open Positions:", portfolio.openPositions.length);
   console.log("----------------------------------");
 
-  if (portfolio.openPosition) {
-    await checkOpenPosition(portfolio);
-  } else {
-    await scanForNewTrade(portfolio);
-  }
+  await checkOpenPositions(portfolio);
+
+  portfolio = loadPortfolio();
+
+  await scanForNewTrades(portfolio);
 
   printReport(loadPortfolio());
 }
 
 async function startBot() {
-  console.log(`✅ Bot is now watching the market every ${CHECK_INTERVAL_SECONDS} seconds.`);
+  console.log(`✅ Bot is watching the market every ${CHECK_INTERVAL_SECONDS} seconds.`);
 
   await runBotCycle();
 

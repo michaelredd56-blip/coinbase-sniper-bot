@@ -13,12 +13,7 @@ COINS: [
   "ETH-USD",
   "SOL-USD",
   "XRP-USD",
-  "DOGE-USD",
-  "ADA-USD",
-  "AVAX-USD",
-  "LINK-USD",
-  "LTC-USD",
-  "DOT-USD"
+  "LINK-USD"
 ],
 
   REAL_TRADING_ENABLED: false

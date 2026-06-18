@@ -8,7 +8,7 @@ const TRADE_SCORE_THRESHOLD = 50;
 const TAKE_PROFIT_PERCENT = 0.0125;
 const STOP_LOSS_PERCENT = 0.0075;
 const MAX_OPEN_POSITIONS = 5;
-const MAX_POSITION_MINUTES = 30;
+const MAX_POSITION_MINUTES = 5;
 
 const priceHistory = {};
 

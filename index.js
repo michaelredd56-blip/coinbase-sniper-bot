@@ -92,25 +92,25 @@ if (!history || history.length < 5) {
   const low = Math.min(...prices);
   const volatility = ((high - low) / last) * 100;
 
-  let score = 50;
+  let score = 55;
   let reasons = [];
 
-  if (trendMove > 0.05) {
+  if (trendMove > 0.02) {
     score += 10;
     reasons.push("positive trend");
   }
 
-  if (trendMove > 0.15) {
+  if (trendMove > 0.08) {
     score += 15;
     reasons.push("strong trend");
   }
 
-  if (shortMove > 0.03) {
+  if (shortMove > 0.01) {
     score += 10;
     reasons.push("fresh momentum");
   }
 
-  if (shortMove > 0.20) {
+  if (shortMove > 0.05) {
     score += 15;
     reasons.push("strong momentum");
   }

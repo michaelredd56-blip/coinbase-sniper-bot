@@ -71,13 +71,14 @@ function updatePriceHistory(symbol, price) {
 function smartAIScore(symbol) {
   const history = priceHistory[symbol];
 
-  if (!history || history.length < 5) {
-    return {
-      symbol,
-      score: 50,
-      reason: "Not enough data yet"
-    };
-  }
+if (!history || history.length < 5) {
+  return {
+    symbol,
+    score: 50,
+    currentPrice: history && history.length > 0 ? history[history.length - 1].price : null,
+    reason: "Not enough data yet"
+  };
+}
 
   const first = history[0].price;
   const last = history[history.length - 1].price;
@@ -94,17 +95,17 @@ function smartAIScore(symbol) {
   let score = 50;
   let reasons = [];
 
-  if (trendMove > 0.15) {
+  if (trendMove > 0.05) {
     score += 10;
     reasons.push("positive trend");
   }
 
-  if (trendMove > 0.35) {
+  if (trendMove > 0.15) {
     score += 15;
     reasons.push("strong trend");
   }
 
-  if (shortMove > 0.08) {
+  if (shortMove > 0.03) {
     score += 10;
     reasons.push("fresh momentum");
   }

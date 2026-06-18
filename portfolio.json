@@ -1,7 +1,8 @@
 {
   "startingBalance": 500,
-  "currentBalance": 500,
-  "wins": 0,
-  "losses": 0,
-  "trades": []
+  "currentBalance": 562.44,
+  "wins": 248,
+  "losses": 182,
+  "trades": [],
+  "openPosition": null
 }

@@ -11,7 +11,12 @@ module.exports = {
 COINS: [
   "BTC-USD",
   "ETH-USD",
-  "SOL-USD"
+  "SOL-USD",
+  "XRP-USD",
+  "DOGE-USD",
+  "ADA-USD",
+  "AVAX-USD",
+  "LINK-USD"
 ],
 
   REAL_TRADING_ENABLED: false

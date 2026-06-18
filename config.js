@@ -8,11 +8,18 @@ module.exports = {
 
   MAX_DAILY_LOSS_PERCENT: 0.03,
 
-  COINS: [
-    "BTC-USD",
-    "ETH-USD",
-    "SOL-USD"
-  ],
+COINS: [
+  "BTC-USD",
+  "ETH-USD",
+  "SOL-USD",
+  "XRP-USD",
+  "DOGE-USD",
+  "ADA-USD",
+  "AVAX-USD",
+  "LINK-USD",
+  "LTC-USD",
+  "DOT-USD"
+],
 
   REAL_TRADING_ENABLED: false
 };

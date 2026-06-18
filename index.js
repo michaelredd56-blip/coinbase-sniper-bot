@@ -4,11 +4,11 @@ const config = require("./config");
 const PORTFOLIO_FILE = "./portfolio.json";
 
 const CHECK_INTERVAL_SECONDS = 5;
-const TRADE_SCORE_THRESHOLD = 70;
+const TRADE_SCORE_THRESHOLD = 75;
 const TAKE_PROFIT_PERCENT = 0.004; // +0.40%
 const STOP_LOSS_PERCENT = 0.002;   // -0.20%
 const MAX_OPEN_POSITIONS = 3;
-const MAX_POSITION_MINUTES = 3;
+const MAX_POSITION_MINUTES = 1;
 const priceHistory = {};
 
 console.log("🚀 AI-Style Coinbase Sniper Bot Started");

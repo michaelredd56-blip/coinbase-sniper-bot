@@ -5,10 +5,10 @@ const PORTFOLIO_FILE = "./portfolio.json";
 
 const CHECK_INTERVAL_SECONDS = 5;
 const TRADE_SCORE_THRESHOLD = 60;
-const TAKE_PROFIT_PERCENT = 0.0025; // +0.25%
-const STOP_LOSS_PERCENT = 0.0015;   // -0.15%
+const TAKE_PROFIT_PERCENT = 0.004; // +0.40%
+const STOP_LOSS_PERCENT = 0.002;   // -0.20%
 const MAX_OPEN_POSITIONS = 3;
-const MAX_POSITION_MINUTES = 2;
+const MAX_POSITION_MINUTES = 3;
 const priceHistory = {};
 
 console.log("🚀 AI-Style Coinbase Sniper Bot Started");
